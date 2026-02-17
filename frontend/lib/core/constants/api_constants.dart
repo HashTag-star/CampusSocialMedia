@@ -2,7 +2,7 @@ import 'dart:io';
 
 class ApiConstants {
   // Production (Render)
-  static const String baseUrl = 'https://unigram-jpus.onrender.com';
+  static const String baseUrl = 'https://campussocialmedia.onrender.com';
 
   // Local Development (Uncomment to use)
   /*
