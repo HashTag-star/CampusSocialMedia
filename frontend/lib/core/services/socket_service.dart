@@ -76,6 +76,10 @@ class SocketService {
     _socket?.on('stop_typing', callback);
   }
   
+  void on(String event, Function(dynamic) callback) {
+    _socket?.on(event, callback);
+  }
+
   void off(String event) {
     _socket?.off(event);
   }

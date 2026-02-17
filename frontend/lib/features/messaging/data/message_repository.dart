@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:campus_social_media/core/network/api_client.dart';
@@ -36,12 +37,30 @@ class MessageRepository {
     return Conversation.fromJson(response.data);
   }
 
-  Future<ChatMessage> sendMessage(String conversationId, String content) async {
+  Future<ChatMessage> sendMessage(String conversationId, String? content, {String? mediaUrl}) async {
     final response = await _dio.post(
       '/messages/conversations/$conversationId/messages',
-      data: {'content': content},
+      data: {
+        'content': content, 
+        'media_url': mediaUrl
+      },
     );
     return ChatMessage.fromJson(response.data);
+  }
+
+  Future<String?> uploadMedia(File file) async {
+    try {
+      String fileName = file.path.split('/').last;
+      FormData formData = FormData.fromMap({
+        "file": await MultipartFile.fromFile(file.path, filename: fileName),
+      });
+
+      final response = await _dio.post('/messages/upload', data: formData);
+      return response.data['url'];
+    } catch (e) {
+      // Return null or rethrow based on preference
+      return null;
+    }
   }
 
   Future<void> markAsRead(String conversationId) async {

@@ -1,3 +1,5 @@
+enum MessageStatus { sending, sent, delivered, read, error }
+
 class ChatMessage {
   final String id;
   final String conversationId;
@@ -6,6 +8,7 @@ class ChatMessage {
   final String? mediaUrl;
   final DateTime createdAt;
   final Map<String, dynamic>? sender;
+  final MessageStatus status;
 
   ChatMessage({
     required this.id,
@@ -15,6 +18,7 @@ class ChatMessage {
     this.mediaUrl,
     required this.createdAt,
     this.sender,
+    this.status = MessageStatus.sent,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -26,6 +30,23 @@ class ChatMessage {
       mediaUrl: json['media_url'],
       createdAt: DateTime.parse(json['createdAt']),
       sender: json['Sender'] as Map<String, dynamic>?,
+      status: MessageStatus.sent, // Default to sent for server messages
+    );
+  }
+
+  ChatMessage copyWith({
+    String? id,
+    MessageStatus? status,
+  }) {
+    return ChatMessage(
+      id: id ?? this.id,
+      conversationId: conversationId,
+      senderId: senderId,
+      content: content,
+      mediaUrl: mediaUrl,
+      createdAt: createdAt,
+      sender: sender,
+      status: status ?? this.status,
     );
   }
 

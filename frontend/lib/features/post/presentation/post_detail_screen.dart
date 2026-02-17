@@ -35,6 +35,8 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
   late Map<String, dynamic> _post;
   bool _isEditing = false;
   late TextEditingController _captionController;
+  final _commentController = TextEditingController();
+  final _commentFocusNode = FocusNode();
   List<dynamic> _comments = [];
   bool _isLoadingComments = true;
   String? _replyingToId; // ID of the comment being replied to
@@ -73,7 +75,68 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
     super.dispose();
   }
 
-  // ... _deletePost, _saveCaption ...
+  Future<void> _deletePost() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Post'),
+        content: const Text('Are you sure? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
+
+    try {
+      await ref.read(feedRepositoryProvider).deletePost(_post['id']);
+      if (mounted) {
+        ref.invalidate(profileProvider('me'));
+        ref.invalidate(feedNotifierProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Post deleted')),
+        );
+        context.pop(true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _saveCaption() async {
+    try {
+      await ref.read(feedRepositoryProvider).updatePostCaption(
+        _post['id'],
+        _captionController.text.trim(),
+      );
+      if (mounted) {
+        setState(() {
+          _post['caption'] = _captionController.text.trim();
+          _isEditing = false;
+        });
+        ref.invalidate(profileProvider('me'));
+        ref.invalidate(feedNotifierProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Caption updated')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update: $e')),
+        );
+      }
+    }
+  }
 
   Future<void> _addComment() async {
     final content = _commentController.text.trim();

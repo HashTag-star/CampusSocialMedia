@@ -25,4 +25,16 @@ class User {
       role: json['role'] ?? 'user',
     );
   }
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'email': email,
+      'profile_data': {
+        'name': name,
+        'avatar_url': avatarUrl,
+        ...?profileData,
+      },
+      'role': role,
+    };
+  }
 }

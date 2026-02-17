@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:campus_social_media/features/feed/presentation/feed_provider.dart';
 import 'package:campus_social_media/features/feed/presentation/widgets/post_card.dart';
 import 'package:campus_social_media/features/feed/presentation/widgets/ambient_background.dart';
@@ -43,7 +44,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   Widget build(BuildContext context) {
     final feedState = ref.watch(feedNotifierProvider);
     final feedType = ref.watch(feedTypeProvider);
-    final hasNewPosts = ref.watch(newPostsProvider);
+    final newPostAvatars = ref.watch(newPostsProvider);
     // final scrollController = ref.watch(feedScrollControllerProvider); // Use local instead
 
     ref.listen(feedNotifierProvider, (previous, next) {
@@ -221,9 +222,10 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           // 4. Floating Add Button Removed (Moved to NavBar)
 
           // 5. New Posts Bubble
-           if (hasNewPosts)
+           // 5. New Posts Bubble
+           if (newPostAvatars.isNotEmpty)
              Positioned(
-              top: 140, // Below AppBar + Tabs
+              top: 100, // Just below the Glass Header
               left: 0,
               right: 0,
               child: Center(
@@ -239,7 +241,8 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                     ref.read(newPostsProvider.notifier).reset();
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    height: 32,
+                    padding: const EdgeInsets.fromLTRB(6, 0, 12, 0),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.primary,
                       borderRadius: BorderRadius.circular(20),
@@ -254,11 +257,37 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 16),
-                        const SizedBox(width: 6),
+                        // Stacked Avatars
+                        SizedBox(
+                          width: newPostAvatars.length == 1 ? 24 : newPostAvatars.length == 2 ? 40 : 56,
+                          child: Stack(
+                            children: [
+                              for (int i = 0; i < newPostAvatars.length; i++)
+                                if (newPostAvatars[i] != 'default')
+                                Positioned(
+                                  left: i * 14.0,
+                                  top: 4,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Theme.of(context).colorScheme.primary, width: 2),
+                                    ),
+                                    child: CircleAvatar(
+                                      radius: 10,
+                                      backgroundImage: CachedNetworkImageProvider(newPostAvatars[i]),
+                                      backgroundColor: Colors.grey[300],
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                         const SizedBox(width: 4),
+                        const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 14),
+                        const SizedBox(width: 4),
                         Text(
                           'New posts',
-                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                           ),

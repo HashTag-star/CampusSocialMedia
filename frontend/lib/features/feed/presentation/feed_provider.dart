@@ -34,6 +34,12 @@ class FeedNotifier extends StateNotifier<AsyncValue<List<Post>>> {
       } else {
         posts = await _repository.getForYouFeed();
       }
+      
+      // Update NewPostsNotifier with latest ID
+      if (posts.isNotEmpty) {
+        _ref.read(newPostsProvider.notifier).setLatestId(posts.first.id);
+      }
+      
       return posts;
     });
   }
@@ -56,17 +62,19 @@ class FeedNotifier extends StateNotifier<AsyncValue<List<Post>>> {
               
               if (newPosts.isNotEmpty) {
                   state = AsyncValue.data([...newPosts, ...currentState]);
-                  // "X-Style": Old posts eventually leave? 
-                  // For now, we just prepend. User can scroll down to see old.
+                  // Update NewPostsNotifier
+                  _ref.read(newPostsProvider.notifier).setLatestId(newPosts.first.id);
               }
           } catch (e) {
               // Ignore refresh errors
           }
       } else {
-          return loadFeed(); // Campus feed doesn't verify pagination yet
+          // Campus feed manual refresh
+          await loadFeed();
       }
   }
 
+  // ... loadMore, toggleLike, createPost, addComment, removePost ...
   Future<void> loadMore() async {
       final currentState = state.value;
       if (currentState == null || currentState.isEmpty) return;
@@ -164,8 +172,6 @@ class FeedNotifier extends StateNotifier<AsyncValue<List<Post>>> {
   }
 }
 
-// ... existing NewPostsNotifier ...
-
 extension IntExtension on int {
   int coerceAtLeast(int min) => this < min ? min : this;
 }
@@ -175,28 +181,29 @@ final feedScrollControllerProvider = Provider.autoDispose<ScrollController>((ref
   return ScrollController();
 });
 
-class NewPostsNotifier extends StateNotifier<bool> {
+class NewPostsNotifier extends StateNotifier<List<String>> {
   final FeedRepository _repository;
   final Ref _ref;
   Timer? _timer;
   String? _currentTopId;
 
-  NewPostsNotifier(this._repository, this._ref) : super(false) {
+  NewPostsNotifier(this._repository, this._ref) : super([]) {
     _startPolling();
   }
 
   void setLatestId(String id) {
     _currentTopId = id;
-    state = false; // Reset state when we have fresh data
+    state = []; // Clear avatars when we have refreshed/loaded
   }
 
   void reset() {
-    state = false;
+    state = [];
   }
 
   void _startPolling() {
     _timer = Timer.periodic(const Duration(seconds: 15), (timer) async {
-      if (state) return;
+      // Don't poll if we don't know the current top
+      if (_currentTopId == null) return;
 
       try {
         final type = _ref.read(feedTypeProvider);
@@ -208,13 +215,37 @@ class NewPostsNotifier extends StateNotifier<bool> {
            latestPosts = await _repository.getForYouFeed();
         }
 
-        if (_currentTopId == null) {
-           if (latestPosts.isNotEmpty) state = true;
-           return;
+        if (latestPosts.isEmpty) return;
+
+        // Find how many new posts we have since _currentTopId
+        // This is a simplified check. In real world, we'd paginate 'newer' than ID.
+        // Here we just check the first N items of the feed.
+        
+        final newAvatars = <String>{};
+        bool foundCurrent = false;
+
+        for (final post in latestPosts) {
+          if (post.id == _currentTopId) {
+            foundCurrent = true;
+            break;
+          }
+          if (post.user.avatarUrl != null) {
+            newAvatars.add(post.user.avatarUrl!);
+          }
         }
 
-        if (latestPosts.isNotEmpty && latestPosts.first.id != _currentTopId) {
-          state = true;
+        if (foundCurrent && newAvatars.isNotEmpty) {
+           // We found new posts on top!
+           state = newAvatars.take(3).toList(); // Take top 3 unique avatars
+        } else if (!foundCurrent && latestPosts.isNotEmpty) {
+           // Current top is gone or invalid? Or more than 1 page of new posts?
+           // Unlikely in 15s interval unless viral. Assume new posts.
+           if (latestPosts.first.user.avatarUrl != null) {
+              state = [latestPosts.first.user.avatarUrl!];
+           } else {
+              // No avatar, but new content
+              state = ['default']; // Signal simple bubble
+           }
         }
       } catch (e) {
         // Silent fail
@@ -229,6 +260,6 @@ class NewPostsNotifier extends StateNotifier<bool> {
   }
 }
 
-final newPostsProvider = StateNotifierProvider<NewPostsNotifier, bool>((ref) {
+final newPostsProvider = StateNotifierProvider<NewPostsNotifier, List<String>>((ref) {
   return NewPostsNotifier(ref.watch(feedRepositoryProvider), ref);
 });

@@ -20,10 +20,10 @@ class ChatController extends StateNotifier<AsyncValue<void>> {
 
   ChatController(this._repository, this._ref) : super(const AsyncData(null));
 
-  Future<ChatMessage?> sendMessage(String conversationId, String content) async {
+  Future<ChatMessage?> sendMessage(String conversationId, String? content, {String? mediaUrl}) async {
     state = const AsyncLoading();
     try {
-      final message = await _repository.sendMessage(conversationId, content);
+      final message = await _repository.sendMessage(conversationId, content, mediaUrl: mediaUrl);
       // Refresh conversations and messages
       _ref.invalidate(conversationsProvider);
       _ref.invalidate(messagesProvider(conversationId));

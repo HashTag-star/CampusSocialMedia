@@ -29,6 +29,44 @@ exports.createPost = async (req, res) => {
         // Tag extraction from caption
         const tags = (caption || '').match(/#[a-z0-9_]+/gi)?.map(tag => tag.slice(1)) || [];
 
+        let mediaUrl = null;
+        let mediaType = 'text';
+        let mediaUrls = [];
+
+        if (req.file) {
+            mediaUrl = req.file.path;
+            mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
+        } else if (req.files && req.files.length > 0) {
+            mediaUrls = req.uploadedUrls || req.files.map(f => f.path);
+            mediaUrl = mediaUrls[0];
+            mediaType = 'image'; 
+            if (req.files[0].mimetype.startsWith('video')) mediaType = 'video';
+        } else if (req.body.mediaUrl) {
+           mediaUrl = req.body.mediaUrl;
+           mediaType = req.body.mediaType || 'image';
+        }
+
+        let parsedLocation = null;
+        if (location) {
+             try {
+                parsedLocation = typeof location === 'string' ? JSON.parse(location) : location;
+            } catch (e) { }
+        }
+
+        let parsedTaggedUsers = [];
+         if (tagged_users) {
+             try {
+                parsedTaggedUsers = typeof tagged_users === 'string' ? JSON.parse(tagged_users) : tagged_users;
+            } catch (e) { }
+        }
+
+        let parsedMusic = null;
+        if (music_metadata) {
+             try {
+                parsedMusic = typeof music_metadata === 'string' ? JSON.parse(music_metadata) : music_metadata;
+            } catch (e) { }
+        }
+
         const newPost = await Post.create({
             user_id: user.id,
             university_id: user.university_id,

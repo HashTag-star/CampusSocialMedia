@@ -245,6 +245,20 @@ exports.sendMessage = async (req, res) => {
     }
 };
 
+// POST /upload — upload media for chat
+exports.uploadMedia = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'No file uploaded' });
+        }
+        // The upload middleware already handles upload to Supabase and puts URL in req.file.path
+        res.json({ url: req.file.path });
+    } catch (error) {
+        console.error('uploadMedia error:', error);
+        res.status(500).json({ message: 'Upload failed' });
+    }
+};
+
 // PATCH /conversations/:id/read — mark conversation as read
 exports.markAsRead = async (req, res) => {
     try {
