@@ -8,13 +8,15 @@ final socketServiceProvider = Provider<SocketService>((ref) {
 });
 
 class SocketService {
-  late IO.Socket _socket;
+  IO.Socket? _socket;
   final StorageService _storage;
   bool _isConnected = false;
 
   SocketService(this._storage);
 
-  void initSocket() async {
+  Future<void> initSocket() async {
+    if (_socket != null) return; // Already initialized
+
     final token = await _storage.read(key: 'auth_token');
     if (token == null) return;
 
@@ -28,53 +30,53 @@ class SocketService {
       .build()
     );
 
-    _socket.connect();
+    _socket!.connect();
 
-    _socket.onConnect((_) {
+    _socket!.onConnect((_) {
       print('✅ Socket Connected');
       _isConnected = true;
     });
 
-    _socket.onDisconnect((_) {
+    _socket!.onDisconnect((_) {
       print('❌ Socket Disconnected');
       _isConnected = false;
     });
 
-    _socket.onError((data) => print('Socket Error: $data'));
+    _socket!.onError((data) => print('Socket Error: $data'));
   }
 
   void disconnect() {
-    _socket.disconnect();
+    _socket?.disconnect();
   }
 
   // Chat Methods
   void joinConversation(String conversationId) {
-    if (!_isConnected) initSocket(); // improved auto-reconnect
-    _socket.emit('join_conversation', conversationId);
+    if (_socket == null || !_isConnected) initSocket(); 
+    _socket?.emit('join_conversation', conversationId);
   }
 
   void sendTyping(String conversationId) {
-    _socket.emit('typing', conversationId);
+    _socket?.emit('typing', conversationId);
   }
 
   void sendStopTyping(String conversationId) {
-    _socket.emit('stop_typing', conversationId);
+    _socket?.emit('stop_typing', conversationId);
   }
 
   // Listeners
   void onNewMessage(Function(dynamic) callback) {
-    _socket.on('new_message', callback);
+    _socket?.on('new_message', callback);
   }
 
   void onTyping(Function(dynamic) callback) {
-    _socket.on('typing', callback);
+    _socket?.on('typing', callback);
   }
 
   void onStopTyping(Function(dynamic) callback) {
-    _socket.on('stop_typing', callback);
+    _socket?.on('stop_typing', callback);
   }
   
   void off(String event) {
-    _socket.off(event);
+    _socket?.off(event);
   }
 }

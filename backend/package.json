@@ -24,6 +24,7 @@
     "morgan": "^1.10.0",
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
+    "node-cache": "^5.1.2",
     "pg": "^8.11.3",
     "rss-parser": "^3.13.0",
     "sequelize": "^6.35.1",

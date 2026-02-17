@@ -1,6 +1,14 @@
 const { User, Post, Like, Comment, Follow, PostView, Block } = require('../models');
 const { Op } = require('sequelize');
 
+const TASTE_CLUSTERS = {
+    'tech': ['coding', 'ai', 'javascript', 'python', 'startup', 'crypto', 'webdev', 'linux', 'programming'],
+    'sports': ['football', 'basketball', 'gym', 'fitness', 'soccer', 'nfl', 'nba', 'workout'],
+    'art': ['design', 'fashion', 'photography', 'art', 'drawing', 'music', 'creative'],
+    'campus': ['study', 'library', 'exam', 'party', 'dorm', 'food', 'collegelife', 'student'],
+    'news': ['politics', 'news', 'world', 'economy', 'current_events']
+};
+
 /**
  * X/Instagram Style Recommendation Engine
  * 
@@ -10,7 +18,7 @@ const { Op } = require('sequelize');
  *    - Network: Posts from following (high priority).
  *    - Viral: High engagement posts from University/Global.
  *    - Topics: Posts matching user interests.
- * 3. Scoring: Weighted sum of EdgeRank, InterestMatch, Recency.
+ * 3. Scoring: Weighted sum of EdgeRank, InterestMatch, ClusterMatch, Recency.
  * 4. Diversity: Penalty for repetitive authors.
  */
 
@@ -144,15 +152,35 @@ exports.getForYouFeed = async (userId, options = {}) => {
         const comments = post.Comments.length;
         score += (likes * W_LIKE) + (comments * W_COMMENT);
 
-        // 3. Interest Match
+        // 3. Interest & Cluster Match
         const postTags = post.tags || [];
         let interestScore = 0;
-        postTags.forEach(tag => {
-            if (userInterests[tag]) {
-                interestScore += userInterests[tag]; // Add accumulated weight from user profile
+        let clusterScore = 0;
+
+        // Pre-calculate user clusters for performance (could be done outside loop)
+        const userClusters = new Set();
+        Object.keys(userInterests).forEach(tag => {
+            for (const [clusterName, tags] of Object.entries(TASTE_CLUSTERS)) {
+                if (tags.includes(tag)) userClusters.add(clusterName);
             }
         });
-        score += Math.min(interestScore, 20) * W_INTEREST; // Cap interest influence
+
+        postTags.forEach(tag => {
+            // Direct Match
+            if (userInterests[tag]) {
+                interestScore += userInterests[tag];
+            }
+
+            // Cluster Match
+            for (const [clusterName, tags] of Object.entries(TASTE_CLUSTERS)) {
+                if (tags.includes(tag) && userClusters.has(clusterName)) {
+                    clusterScore += 2.0; // Boost for matching cluster
+                }
+            }
+        });
+
+        score += Math.min(interestScore, 20) * W_INTEREST; 
+        score += Math.min(clusterScore, 10) * 3.0; // Cap cluster boost
 
         // 4. Network Boost
         if (isFollowing) score += W_NETWORK;

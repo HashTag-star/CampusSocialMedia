@@ -86,6 +86,8 @@ exports.toggleLike = async (req, res) => {
     }
 };
 
+const moderationService = require('../services/moderationService');
+
 // Add Comment (supports threading via parentId)
 exports.addComment = async (req, res) => {
     try {
@@ -94,6 +96,14 @@ exports.addComment = async (req, res) => {
         const { content, parentId } = req.body;
 
         if (!content) return res.status(400).json({ message: 'Comment content is required' });
+
+        // --- MODERATION CHECK ---
+        const modResult = moderationService.analyzeText(content);
+        if (modResult.action === 'block') {
+            return res.status(400).json({ message: modResult.reason });
+        }
+        const isSensitive = modResult.action === 'flag';
+        // ------------------------
 
         const post = await Post.findByPk(postId);
         if (!post) return res.status(404).json({ message: 'Post not found' });
@@ -109,7 +119,8 @@ exports.addComment = async (req, res) => {
             user_id: userId,
             post_id: postId,
             parent_id: parentId || null,
-            content
+            content,
+            is_sensitive: isSensitive
         });
 
         const commentWithUser = await Comment.findByPk(comment.id, {

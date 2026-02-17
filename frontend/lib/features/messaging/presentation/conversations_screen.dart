@@ -21,9 +21,11 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
     _initSocket();
   }
 
-  void _initSocket() {
+  void _initSocket() async {
     final socketService = ref.read(socketServiceProvider);
     
+    await socketService.initSocket();
+
     // Listen for any new message to refresh the list (unread counts, last message)
     socketService.onNewMessage((data) {
       if (mounted) {

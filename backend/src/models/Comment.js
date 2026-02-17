@@ -14,6 +14,10 @@ const Comment = sequelize.define('Comment', {
     parent_id: {
         type: DataTypes.UUID,
         allowNull: true
+    },
+    is_sensitive: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
     }
 }, {
     timestamps: true,

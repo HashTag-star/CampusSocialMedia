@@ -46,6 +46,10 @@ const Post = sequelize.define('Post', {
     tagged_users: {
         type: DataTypes.JSONB, // Array of user IDs
         defaultValue: []
+    },
+    is_sensitive: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
     }
 }, {
     timestamps: true,

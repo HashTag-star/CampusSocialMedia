@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:campus_social_media/features/shorts/presentation/shorts_provider.dart';
 import 'package:campus_social_media/features/shorts/presentation/reel_viewer_screen.dart';
+import 'package:go_router/go_router.dart';
 
 class ShortsScreen extends ConsumerWidget {
   const ShortsScreen({super.key});
@@ -43,7 +44,7 @@ class ShortsScreen extends ConsumerWidget {
                       shape: BoxShape.circle,
                       color: Colors.white.withOpacity(0.1),
                     ),
-                    child: const Icon(Icons.play_circle_outline_rounded, size: 64, color: Colors.white54),
+                    child: const Icon(Icons.video_library_outlined, size: 64, color: Colors.white54),
                   ),
                   const SizedBox(height: 20),
                   const Text(
@@ -56,9 +57,26 @@ class ShortsScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Upload a video to get started!',
+                    'Be the first to upload a video!',
                     style: TextStyle(color: Colors.white54, fontSize: 14),
                   ),
+                  const SizedBox(height: 30),
+                  ElevatedButton.icon(
+                    onPressed: () => context.push('/create-reel'),
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('Create Short'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (Navigator.canPop(context))
+                    TextButton(
+                      onPressed: () => context.pop(),
+                      child: const Text('Go Back', style: TextStyle(color: Colors.white70)),
+                    ),
                 ],
               ),
             );
