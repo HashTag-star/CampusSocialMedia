@@ -8,13 +8,14 @@ This guide helps you deploy the Backend (Node.js + PostgreSQL) to Render.com for
 
 ## Option 1: Manual Setup (Recommended for First Time)
 
-### 1. Create Database
-1.  Click **New +** -> **PostgreSQL**.
-2.  Name: `campus-social-db`.
-3.  Region: Choose closest to you (e.g., Ohio, Frankfurt).
-4.  Plan: **Free**.
-5.  Click **Create Database**.
-6.  **Copy the "Internal Connection String"** (Available once created).
+### 1. Database (Skip if using Supabase)
+**Since you are using Supabase**, you do **NOT** need to create a database on Render.
+Instead, you will use your **Supabase Connection String**.
+
+1.  Go to your Supabase Dashboard -> Project Settings -> Database.
+2.  Copy the **Connection String** (Node.js / Transaction Pooler).
+    - It looks like: `postgres://postgres.[project-ref]:[password]@aws-0-region.pooler.supabase.com:6543/postgres`
+    - **Important**: Use the "Transaction Mode" (Port 6543) if available, for better performance with serverless.
 
 ### 2. Create Web Service for Backend
 1.  Click **New +** -> **Web Service**.
@@ -25,7 +26,7 @@ This guide helps you deploy the Backend (Node.js + PostgreSQL) to Render.com for
 6.  Root Directory: Leave empty (unless backend is in a subfolder).
 7.  Runtime: **Node**.
 8.  Build Command: `npm install`.
-9.  Start Command: `node src/server.js`.
+9.  Start Command: `node src/index.js`.
 10. Plan: **Free**.
 
 ### 3. Configure Environment Variables
@@ -35,7 +36,7 @@ Scroll down to **Environment Variables** and add the following:
 | :--- | :--- |
 | `NODE_ENV` | `production` |
 | `PORT` | `10000` (Render default) |
-| `DATABASE_URL` | Paste the **Internal Connection String** from Step 1 |
+| `DATABASE_URL` | Paste the **Supabase Connection String** from Step 1 |
 | `JWT_SECRET` | Generate a strictly random string (e.g., use `openssl rand -hex 32`) |
 | `SUPABASE_URL` | Your Supabase Project URL (from local .env) |
 | `SUPABASE_KEY` | Your Supabase Anon Key (from local .env) |
