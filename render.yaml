@@ -1,0 +1,24 @@
+services:
+  # 1. Web Service (Node.js Backend)
+  - type: web
+    name: campus-social-api
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node src/server.js
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: NODE_ENV
+        value: production
+    probes:
+        - path: /health
+          type: http
+          intervalSeconds: 15
+          timeoutSeconds: 5
+
+databases:
+  # 2. PostgreSQL Database
+  - name: campus-social-db
+    plan: free
+    ipAllowList: [] # Allow all for now, or restrict if needed

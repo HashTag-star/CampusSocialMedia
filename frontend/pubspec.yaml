@@ -1,0 +1,51 @@
+name: campus_social_media
+description: A new Flutter project for Campus Social Media.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.4.0
+  riverpod_annotation: ^2.2.0
+  go_router: ^12.0.0
+  dio: ^5.3.0
+  flutter_secure_storage: ^9.0.0
+  shared_preferences: ^2.2.0
+  google_fonts: ^6.1.0
+  intl: ^0.20.2
+  # Media & UI
+  cached_network_image: ^3.3.0
+  flutter_svg: ^2.0.7
+  image_picker: ^1.2.0
+
+  media_kit: ^1.1.10
+  media_kit_video: ^1.2.4
+  chewie: ^1.7.0
+  # Real-time
+  socket_io_client: ^2.0.3
+  glassmorphism_ui: ^0.3.0
+  timeago: ^3.7.1
+  shimmer: ^3.0.0
+  carousel_slider: ^5.0.0
+  # livekit_client: ^2.0.0 # Uncomment when implementation starts
+  audioplayers: ^5.2.0
+  geolocator: ^10.1.0
+  permission_handler: ^11.0.0
+  visibility_detector: ^0.4.0+2
+  media_kit_libs_video: ^1.0.7
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  build_runner: ^2.4.6
+  riverpod_generator: ^2.3.0
+  custom_lint: ^0.5.3
+  riverpod_lint: ^2.3.0
+
+flutter:
+  uses-material-design: true
