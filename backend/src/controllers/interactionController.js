@@ -246,14 +246,14 @@ exports.recordPostView = async (req, res) => {
         // For MVP, Postgres is fine.
         const [view, created] = await PostView.findOrCreate({
             where: { 
-                user_id: userId, 
+                viewer_id: userId, 
                 post_id: postId,
                 // Simple de-duping: One view per day per post? Or just one per session? 
                 // Let's just create raw views for now, but usually we'd limit by time window.
                 createdAt: { [require('sequelize').Op.gte]: new Date(Date.now() - 10 * 60 * 1000) } // 10 min throttle
             },
             defaults: {
-                user_id: userId,
+                viewer_id: userId,
                 post_id: postId,
                 viewer_id: userId, // Fix for association alias if needed
                 time_spent_ms: timeSpentMs || 0
