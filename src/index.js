@@ -31,6 +31,13 @@ app.use(helmet());
 app.use(morgan('dev'));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// Debug Middleware: Log all requests
+app.use((req, res, next) => {
+    console.log(`📨 ${req.method} ${req.url}`);
+    console.log('Headers:', req.headers);
+    next();
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
