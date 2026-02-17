@@ -24,6 +24,9 @@ const contentService = require('./services/contentService');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust Proxy (Required for Render/Heroku/Nginx)
+app.set('trust proxy', 1); 
+
 // Middleware
 app.use(express.json());
 app.use(cors());
