@@ -78,6 +78,65 @@ app.post('/api/cron/trigger', async (req, res) => {
     res.json({ message: 'Content fetch triggered in background' });
 });
 
+// Socket.io Setup
+const http = require('http');
+const { Server } = require('socket.io');
+
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: "*", // Allow all origins (for mobile app)
+        methods: ["GET", "POST"]
+    }
+});
+
+// Export io for use in controllers
+app.set('io', io);
+
+// Socket Middleware (Auth)
+const jwt = require('jsonwebtoken');
+io.use((socket, next) => {
+    const token = socket.handshake.auth.token;
+    if (!token) return next(new Error('Authentication error'));
+    
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        socket.user = decoded;
+        next();
+    } catch (err) {
+        next(new Error('Authentication error'));
+    }
+});
+
+io.on('connection', (socket) => {
+    console.log(`🔌 User connected: ${socket.user.id}`);
+
+    // Join a conversation room
+    socket.on('join_conversation', (conversationId) => {
+        socket.join(`conversation_${conversationId}`);
+        console.log(`User ${socket.user.id} joined conversation ${conversationId}`);
+    });
+
+    // Typing indicators
+    socket.on('typing', (conversationId) => {
+        socket.to(`conversation_${conversationId}`).emit('typing', {
+            userId: socket.user.id,
+            conversationId
+        });
+    });
+
+    socket.on('stop_typing', (conversationId) => {
+        socket.to(`conversation_${conversationId}`).emit('stop_typing', {
+            userId: socket.user.id,
+            conversationId
+        });
+    });
+
+    socket.on('disconnect', () => {
+        console.log('User disconnected');
+    });
+});
+
 // Start Server
 const startServer = async () => {
     await connectDB();
@@ -89,7 +148,7 @@ const startServer = async () => {
     // Initialize Cron Jobs
     initCronJobs();
 
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
     });
 };

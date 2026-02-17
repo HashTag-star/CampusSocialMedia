@@ -2,8 +2,8 @@ const cron = require('node-cron');
 const contentService = require('../services/contentService');
 
 const initCronJobs = () => {
-    // Run every 2 minutes for "live" feel
-    cron.schedule('*/2 * * * *', async () => {
+    // Run every 15 minutes to prevent overload
+    cron.schedule('*/15 * * * *', async () => {
         console.log('⏰ Cron: Triggering scheduled content fetch...');
         await contentService.fetchAndCreatePosts();
     });

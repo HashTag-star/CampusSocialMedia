@@ -16,9 +16,9 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
             rejectUnauthorized: false
         },
         keepAlive: true,
-        statement_timeout: 10000,
-        query_timeout: 10000,
-        connectionTimeoutMillis: 30000
+        statement_timeout: 60000, // 60s
+        query_timeout: 60000,     // 60s
+        connectionTimeoutMillis: 60000 // 60s
     }
 });
 
@@ -32,3 +32,4 @@ const connectDB = async () => {
 };
 
 module.exports = { sequelize, connectDB };
+ 

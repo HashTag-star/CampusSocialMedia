@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:campus_social_media/features/messaging/presentation/message_provider.dart';
 import 'package:campus_social_media/features/messaging/data/message_repository.dart';
 import 'package:campus_social_media/features/messaging/domain/message.dart';
 import 'package:campus_social_media/features/auth/presentation/auth_provider.dart';
+import 'package:campus_social_media/core/services/socket_service.dart';
 import 'package:intl/intl.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -28,17 +30,84 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final List<ChatMessage> _localMessages = [];
   bool _isSending = false;
 
+  bool _isTyping = false;
+  Timer? _typingDebounce;
+  bool _otherUserIsTyping = false;
+  Timer? _typingIndicatorTimer;
+
   @override
   void initState() {
     super.initState();
+    _initSocket();
+    
     // Mark as read when opening
     Future.microtask(() {
       ref.read(messageRepositoryProvider).markAsRead(widget.conversationId);
     });
   }
 
+  void _initSocket() {
+    final socketService = ref.read(socketServiceProvider);
+    socketService.joinConversation(widget.conversationId);
+
+    socketService.onNewMessage((data) {
+      if (mounted) {
+        final message = ChatMessage.fromJson(data);
+        if (!_localMessages.any((m) => m.id == message.id)) {
+          setState(() {
+            _localMessages.add(message);
+            // If we receive a message, they clearly stopped typing
+            _otherUserIsTyping = false; 
+          });
+          _scrollToBottom();
+          ref.read(messageRepositoryProvider).markAsRead(widget.conversationId);
+        }
+      }
+    });
+
+    socketService.onTyping((data) {
+      if (mounted && data['userId'] != ref.read(currentUserProvider)?.id) {
+        setState(() => _otherUserIsTyping = true);
+        
+        // Auto-hide after 3 seconds if no stop_typing event comes
+        _typingIndicatorTimer?.cancel();
+        _typingIndicatorTimer = Timer(const Duration(seconds: 3), () {
+          if (mounted) setState(() => _otherUserIsTyping = false);
+        });
+      }
+    });
+    
+    socketService.onStopTyping((data) {
+       if (mounted && data['userId'] != ref.read(currentUserProvider)?.id) {
+          setState(() => _otherUserIsTyping = false);
+       }
+    });
+  }
+
+  void _onTextChanged(String text) {
+    final socketService = ref.read(socketServiceProvider);
+    
+    if (!_isTyping && text.isNotEmpty) {
+      _isTyping = true;
+      socketService.sendTyping(widget.conversationId);
+    }
+
+    _typingDebounce?.cancel();
+    _typingDebounce = Timer(const Duration(seconds: 2), () {
+      _isTyping = false;
+      socketService.sendStopTyping(widget.conversationId);
+    });
+  }
+
   @override
   void dispose() {
+    final socketService = ref.read(socketServiceProvider);
+    socketService.off('new_message');
+    socketService.off('typing');
+    socketService.off('stop_typing');
+    
+    _typingDebounce?.cancel();
+    _typingIndicatorTimer?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -47,6 +116,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void _sendMessage() async {
     final content = _messageController.text.trim();
     if (content.isEmpty || _isSending) return;
+
+    // Stop typing immediately when sending
+    _typingDebounce?.cancel();
+    ref.read(socketServiceProvider).sendStopTyping(widget.conversationId);
+    _isTyping = false;
 
     _messageController.clear();
     setState(() => _isSending = true);
@@ -57,6 +131,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
 
     if (msg != null && mounted) {
+      // Don't add to _localMessages here if socket is fast enough, 
+      // but keeping it for optimistic UI is better.
+      // We check for duplicates in onNewMessage to handle this.
       setState(() {
         _localMessages.add(msg);
         _isSending = false;

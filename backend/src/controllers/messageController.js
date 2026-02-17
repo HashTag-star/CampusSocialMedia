@@ -232,6 +232,12 @@ exports.sendMessage = async (req, res) => {
             ]
         });
 
+        // Socket.io: Emit new message
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`conversation_${conversationId}`).emit('new_message', fullMessage);
+        }
+
         res.status(201).json(fullMessage);
     } catch (error) {
         console.error('sendMessage error:', error);
@@ -249,6 +255,16 @@ exports.markAsRead = async (req, res) => {
             { last_read_at: new Date() },
             { where: { conversation_id: conversationId, user_id: userId } }
         );
+
+        // Socket.io: Emit read receipt
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`conversation_${conversationId}`).emit('message_read', {
+                conversationId,
+                userId,
+                readAt: new Date()
+            });
+        }
 
         res.json({ message: 'Marked as read' });
     } catch (error) {

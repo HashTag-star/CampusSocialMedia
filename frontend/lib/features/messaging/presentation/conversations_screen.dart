@@ -5,11 +5,35 @@ import 'package:campus_social_media/features/messaging/presentation/message_prov
 import 'package:campus_social_media/features/messaging/domain/conversation.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
-class ConversationsScreen extends ConsumerWidget {
+import 'package:campus_social_media/core/services/socket_service.dart';
+
+class ConversationsScreen extends ConsumerStatefulWidget {
   const ConversationsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ConversationsScreen> createState() => _ConversationsScreenState();
+}
+
+class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _initSocket();
+  }
+
+  void _initSocket() {
+    final socketService = ref.read(socketServiceProvider);
+    
+    // Listen for any new message to refresh the list (unread counts, last message)
+    socketService.onNewMessage((data) {
+      if (mounted) {
+        ref.invalidate(conversationsProvider);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final conversationsAsync = ref.watch(conversationsProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
