@@ -214,6 +214,9 @@ exports.fetchAndCreatePosts = async () => {
 
         } catch (error) {
             console.error(`⚠️ Error fetching ${feedSource.url}:`, error.message);
+            if (error.name === 'SequelizeValidationError') {
+                error.errors.forEach(e => console.error(`  - ${e.message} (Value: ${e.value})`));
+            }
         }
     }
     console.log('🏁 Cron: Content Fetch Completed.');

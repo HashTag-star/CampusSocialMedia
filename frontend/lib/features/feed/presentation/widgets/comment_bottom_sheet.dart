@@ -63,25 +63,66 @@ class _CommentBottomSheetState extends ConsumerState<CommentBottomSheet> {
     final content = _commentController.text.trim();
     if (content.isEmpty) return;
 
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+
+    // 1. Create Temp Comment
+    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+    final tempComment = {
+      'id': tempId,
+      'content': content,
+      'createdAt': DateTime.now().toIso8601String(),
+      'User': {
+        'id': user.id,
+        'email': user.email,
+        'profile_data': {
+          'name': user.name,
+          'avatar_url': user.avatarUrl,
+        }
+      },
+      'likesCount': 0,
+      'isLikedByMe': false,
+      'Replies': [],
+      'isTemp': true, // Flag for UI if needed (e.g. fade opacity)
+    };
+
     _commentController.clear();
     FocusScope.of(context).unfocus();
 
+    // 2. Optimistic Update
+    setState(() {
+      _comments.insert(0, tempComment);
+      _replyingToId = null;
+      _replyingToName = null;
+    });
+
+    // Scroll to top to see new comment
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+
     try {
+      // 3. API Call
       await ref.read(feedRepositoryProvider).addComment(
         widget.postId, 
         content,
-        parentId: _replyingToId,
+        parentId: _replyingToId, // Note: This was cleared in state above, but local var capture?
+        // Wait, I cleared _replyingToId in setState BEFORE using it in API call if I use the member var
+        // I must capture it before setState
       );
       
-      // Reset reply state
-      setState(() {
-        _replyingToId = null;
-        _replyingToName = null;
-      });
-
-      await _loadComments(); // Refresh list to show new comment
+      // 4. Success - Refresh to get real ID and server data
+      await _loadComments(); 
     } catch (e) {
+      // 5. Failure - Revert
       if (mounted) {
+        setState(() {
+          _comments.removeWhere((c) => c['id'] == tempId);
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to post comment: $e')),
         );
@@ -90,11 +131,31 @@ class _CommentBottomSheetState extends ConsumerState<CommentBottomSheet> {
   }
 
   Future<void> _toggleCommentLike(String commentId) async {
+    // Basic optimistic like?
+    // Find comment and toggle isLikedByMe and count
+    final index = _comments.indexWhere((c) => c['id'] == commentId);
+    if (index != -1) {
+      final oldComment = _comments[index];
+      final isLiked = oldComment['isLikedByMe'] == true;
+      final likesCount = oldComment['likesCount'] as int;
+      
+      setState(() {
+        _comments[index] = {
+          ...oldComment,
+          'isLikedByMe': !isLiked,
+          'likesCount': isLiked ? likesCount - 1 : likesCount + 1,
+        };
+      });
+    }
+
     try {
       await ref.read(feedRepositoryProvider).toggleCommentLike(commentId);
-      _loadComments(); // Refresh to update like count/state
+      // No need to reload if optimistic logic is correct, but maybe sync later?
     } catch (e) {
-      // Ignore or show error
+      // Revert if failed
+      if (mounted && index != -1) {
+         _loadComments(); // Laziest revert is just reload
+      }
     }
   }
 

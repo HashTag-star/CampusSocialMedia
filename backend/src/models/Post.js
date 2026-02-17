@@ -20,8 +20,8 @@ const Post = sequelize.define('Post', {
         allowNull: true
     },
     media_url: {
-        type: DataTypes.STRING,
-        allowNull: true // Could be text-only post
+        type: DataTypes.TEXT, // Changed from STRING to support long URLs
+        allowNull: true
     },
     media_type: {
         type: DataTypes.STRING, // Changed from ENUM to prevent postgres strict type errors

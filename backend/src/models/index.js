@@ -171,5 +171,7 @@ module.exports = {
     ConversationParticipant,
     Message,
     StoryView,
-    PostView
+    PostView,
+    Block,
+    Report
 };

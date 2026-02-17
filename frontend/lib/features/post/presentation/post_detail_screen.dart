@@ -35,8 +35,8 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
   late Map<String, dynamic> _post;
   bool _isEditing = false;
   late TextEditingController _captionController;
-  final _commentController = TextEditingController();
-  final _commentFocusNode = FocusNode();
+  List<dynamic> _comments = [];
+  bool _isLoadingComments = true;
   String? _replyingToId; // ID of the comment being replied to
   String? _replyingToName; // Name of the user being replied to
   String get _baseUrl => ApiConstants.baseUrl;
@@ -46,6 +46,23 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
     super.initState();
     _post = Map<String, dynamic>.from(widget.post);
     _captionController = TextEditingController(text: _post['caption'] ?? '');
+    _loadComments();
+  }
+
+  Future<void> _loadComments() async {
+    try {
+      final comments = await ref.read(feedRepositoryProvider).getComments(_post['id']);
+      if (mounted) {
+        setState(() {
+          _comments = comments;
+          _isLoadingComments = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingComments = false);
+      }
+    }
   }
 
   @override
@@ -56,88 +73,64 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
     super.dispose();
   }
 
-  Future<void> _deletePost() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Post'),
-        content: const Text('Are you sure? This cannot be undone.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true || !mounted) return;
-
-    try {
-      await ref.read(feedRepositoryProvider).deletePost(_post['id']);
-      if (mounted) {
-        ref.invalidate(profileProvider('me'));
-        ref.invalidate(feedNotifierProvider);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Post deleted')),
-        );
-        context.pop(true);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _saveCaption() async {
-    try {
-      await ref.read(feedRepositoryProvider).updatePostCaption(
-        _post['id'],
-        _captionController.text.trim(),
-      );
-      if (mounted) {
-        setState(() {
-          _post['caption'] = _captionController.text.trim();
-          _isEditing = false;
-        });
-        ref.invalidate(profileProvider('me'));
-        ref.invalidate(feedNotifierProvider);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Caption updated')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update: $e')),
-        );
-      }
-    }
-  }
+  // ... _deletePost, _saveCaption ...
 
   Future<void> _addComment() async {
     final content = _commentController.text.trim();
     if (content.isEmpty) return;
+    
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+
+    // Capture reply context before clearing
+    final parentId = _replyingToId;
+
+    // 1. Create Temp Comment
+    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+    final tempComment = {
+      'id': tempId,
+      'content': content,
+      'createdAt': DateTime.now().toIso8601String(),
+      'User': {
+        'id': user.id,
+        'email': user.email,
+        'profile_data': {
+          'name': user.name,
+          'avatar_url': user.avatarUrl,
+        }
+      },
+      'likesCount': 0,
+      'isLikedByMe': false,
+      'Replies': [],
+      'isTemp': true,
+    };
+
+    _commentController.clear();
+    FocusScope.of(context).unfocus();
+
+    // 2. Optimistic Update
+    setState(() {
+      _comments.insert(0, tempComment); 
+      _replyingToId = null;
+      _replyingToName = null;
+    });
 
     try {
+      // 3. API Call
       await ref.read(feedRepositoryProvider).addComment(
         _post['id'],
         content,
-        parentId: _replyingToId,
+        parentId: parentId,
       );
-      _commentController.clear();
-      setState(() {
-        _replyingToId = null;
-        _replyingToName = null;
-      });
-      FocusScope.of(context).unfocus();
-      ref.invalidate(postCommentsProvider(_post['id']));
+      
+      // 4. Success - Refresh
+      _loadComments();
     } catch (e) {
+      // 5. Failure - Revert
       if (mounted) {
+        setState(() {
+          _comments.removeWhere((c) => c['id'] == tempId);
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to add comment: $e')),
         );
@@ -146,16 +139,26 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
   }
 
   Future<void> _toggleCommentLike(String commentId) async {
+     // Optimistic Like
+    final index = _comments.indexWhere((c) => c['id'] == commentId);
+    if (index != -1) {
+      final oldComment = _comments[index];
+      final isLiked = oldComment['isLikedByMe'] == true;
+      final likesCount = oldComment['likesCount'] as int;
+      
+      setState(() {
+        _comments[index] = {
+          ...oldComment,
+          'isLikedByMe': !isLiked,
+          'likesCount': isLiked ? likesCount - 1 : likesCount + 1,
+        };
+      });
+    }
+
     try {
       await ref.read(feedRepositoryProvider).toggleCommentLike(commentId);
-      ref.invalidate(postCommentsProvider(_post['id']));
     } catch (e) {
-      // Optimistic update failed, revert? For now, just show error
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to like comment: $e')),
-        );
-      }
+      if (mounted) _loadComments(); // Revert on fail
     }
   }
 
@@ -303,33 +306,25 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Text('Comments', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: theme.colorScheme.onSurface)),
                   ),
-                  Consumer(
-                    builder: (context, ref, child) {
-                      final commentsAsync = ref.watch(postCommentsProvider(_post['id']));
-                      return commentsAsync.when(
-                        data: (comments) {
-                          if (comments.isEmpty) {
-                            return Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Center(child: Text('No comments yet.', style: TextStyle(color: theme.hintColor))),
-                            );
-                          }
-                          return ListView.separated(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: comments.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 16),
-                            itemBuilder: (context, index) {
-                              final comment = comments[index];
-                              return _buildCommentItem(comment, theme);
-                            },
-                          );
+                  
+                  if (_isLoadingComments)
+                     const CommentSkeleton()
+                  else if (_comments.isEmpty)
+                     Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Center(child: Text('No comments yet.', style: TextStyle(color: theme.hintColor))),
+                      )
+                  else
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _comments.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 16),
+                        itemBuilder: (context, index) {
+                          final comment = _comments[index];
+                          return _buildCommentItem(comment, theme);
                         },
-                        loading: () => const CommentSkeleton(),
-                        error: (err, _) => Center(child: Text('Error loading comments', style: TextStyle(color: Colors.red))),
-                      );
-                    },
-                  ),
+                      ),
                   const SizedBox(height: 80), // Space for input
                 ],
               ),
