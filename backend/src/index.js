@@ -31,12 +31,21 @@ app.use(helmet());
 app.use(morgan('dev'));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Debug Middleware: Log all requests
-app.use((req, res, next) => {
-    console.log(`📨 ${req.method} ${req.url}`);
-    console.log('Headers:', req.headers);
-    next();
+// Rate Limiting (prevent brute force)
+const rateLimit = require('express-rate-limit');
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP, please try again later.'
 });
+app.use('/api/', limiter);
+
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // limit login attempts
+    message: 'Too many login attempts, please try again later.'
+});
+app.use('/api/auth/login', authLimiter);
 
 // Routes
 app.use('/api/auth', authRoutes);

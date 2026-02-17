@@ -48,9 +48,6 @@ exports.register = async (req, res) => {
 
     exports.login = async (req, res) => {
         try {
-            console.log('Login attempt for:', req.body.email);
-            console.log('DB URL (Partial):', process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 20) + '...' : 'UNDEFINED');
-            
             const { email, password } = req.body;
     
             // Check for user
@@ -58,19 +55,14 @@ exports.register = async (req, res) => {
                 where: { email }
             });
             
-            console.log('User found:', !!user);
-            
             if (!user) {
-                console.log('Login failed: User not found in DB');
                 return res.status(400).json({ message: 'Invalid credentials' });
             }
     
             // Check password
             const isMatch = await bcrypt.compare(password, user.password_hash);
-            console.log('Password match:', isMatch);
             
             if (!isMatch) {
-                console.log('Login failed: Invalid password');
                 return res.status(400).json({ message: 'Invalid credentials' });
             }
 
