@@ -38,25 +38,35 @@ class ErrorService {
         message = 'Connection timed out. Please check your internet.';
         break;
       case DioExceptionType.badResponse:
+        final statusCode = e.response?.statusCode;
         final data = e.response?.data;
+        
         if (data is Map && data['message'] != null) {
+          // Use backend message if available, but sanitize it if it looks technical?
+          // For now, let's assume backend sends readable messages for 400s
           message = data['message'];
-        } else if (e.response?.statusCode == 401) {
-             message = 'Session expired. Please expecting re-login.';
-        } else if (e.response?.statusCode == 500) {
-          message = 'Server error. Please try again later.';
+        } else if (statusCode == 400) {
+          message = 'Something wasn\'t right with that request.';
+        } else if (statusCode == 401) {
+          message = 'Session expired. Please sign in again.';
+        } else if (statusCode == 403) {
+          message = 'You don\'t have permission to do that.';
+        } else if (statusCode == 404) {
+          message = 'We couldn\'t find what you were looking for.';
+        } else if (statusCode != null && statusCode >= 500) {
+          message = 'Our servers are having a moment. Please try again later.';
         } else {
-             message = 'Received invalid status code: ${e.response?.statusCode}';
+             message = 'Something went wrong ($statusCode).';
         }
         break;
       case DioExceptionType.cancel:
         message = 'Request cancelled.';
         break;
       case DioExceptionType.connectionError:
-          message = 'No internet connection.';
+          message = 'No internet connection. Please check your settings.';
           break;
       default:
-        message = 'Network error: ${e.message}';
+        message = 'Something went wrong. Please try again.';
     }
 
     showError(message);

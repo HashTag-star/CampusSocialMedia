@@ -16,7 +16,7 @@ const SENSITIVE_WORDS = [
     'suicide', 'depression', 'drug', 'weed', 'cocaine', 'heroin',
     'politics', 'trump', 'biden', 'election' // Political topics often flagged for optional filtering
 ];
-
+ 
 exports.analyzeText = (text) => {
     if (!text) return { action: 'allow', tags: [] };
     

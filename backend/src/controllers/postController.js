@@ -112,10 +112,13 @@ exports.getCampusFeed = async (req, res) => {
             limit: 50 // Limit to prevent massive cache payload
         });
 
-        // Set Cache (60 seconds)
-        cache.set(cacheKey, posts, 60);
+        // Serialize directly to plain JSON to avoid "circular structure" or "read-only property" errors in node-cache
+        const plainPosts = posts.map(p => p.toJSON());
 
-        res.json(posts);
+        // Set Cache (60 seconds)
+        cache.set(cacheKey, plainPosts, 60);
+
+        res.json(plainPosts);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });
