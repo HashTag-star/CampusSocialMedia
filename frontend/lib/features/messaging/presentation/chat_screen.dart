@@ -10,6 +10,7 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:campus_social_media/core/widgets/error_retry_widget.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
@@ -267,7 +268,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           Expanded(
             child: messagesAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, _) => Center(child: Text('Error: $err')),
+              error: (err, _) => ErrorRetryWidget(
+                message: "Could not load messages.\n$err",
+                onRetry: () => ref.refresh(messagesProvider(widget.conversationId)),
+              ),
               data: (serverMessages) {
                 // Merge server messages with local (optimistic) messages
                 final serverIds = serverMessages.map((m) => m.id).toSet();

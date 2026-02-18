@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:campus_social_media/features/spaces/presentation/spaces_provider.dart';
+import 'package:campus_social_media/core/widgets/error_retry_widget.dart';
 
 class SpacesScreen extends ConsumerWidget {
   const SpacesScreen({super.key});
@@ -45,7 +46,10 @@ class SpacesScreen extends ConsumerWidget {
                 },
               ),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
+        error: (err, stack) => ErrorRetryWidget(
+          message: err.toString(),
+          onRetry: () => ref.refresh(spacesListProvider),
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),

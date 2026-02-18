@@ -2,22 +2,29 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:campus_social_media/core/network/api_client.dart';
 import 'package:campus_social_media/features/spaces/domain/space_entity.dart';
+import 'package:campus_social_media/core/services/cache_service.dart';
 
 final spacesRepositoryProvider = Provider<SpacesRepository>((ref) {
-  return SpacesRepository(ref.watch(apiClientProvider));
+  return SpacesRepository(ref.watch(apiClientProvider), ref.watch(cacheServiceProvider));
 });
 
 class SpacesRepository {
   final Dio _dio;
+  final CacheService _cacheService;
 
-  SpacesRepository(this._dio);
+  SpacesRepository(this._dio, this._cacheService);
 
   Future<List<Space>> getSpaces() async {
     try {
       final response = await _dio.get('/spaces');
       final list = response.data as List;
+      await _cacheService.save('spaces_list', list);
       return list.map((e) => Space.fromJson(e)).toList();
     } catch (e) {
+      final cached = await _cacheService.get('spaces_list');
+      if (cached != null) {
+         return (cached as List).map((e) => Space.fromJson(e)).toList();
+      }
       rethrow;
     }
   }

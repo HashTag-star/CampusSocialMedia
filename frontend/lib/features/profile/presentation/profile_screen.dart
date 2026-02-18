@@ -6,6 +6,7 @@ import 'package:campus_social_media/features/profile/presentation/profile_provid
 import 'package:campus_social_media/features/auth/presentation/auth_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:campus_social_media/core/constants/api_constants.dart';
+import 'package:campus_social_media/core/widgets/error_retry_widget.dart';
 
 class ProfileScreen extends ConsumerWidget {
   final String userId;
@@ -31,7 +32,10 @@ class ProfileScreen extends ConsumerWidget {
       backgroundColor: isDark ? Colors.black : Colors.white,
       body: profileAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
+        error: (err, stack) => ErrorRetryWidget(
+          message: err.toString(),
+          onRetry: () => ref.refresh(profileProvider(effectiveUserId)),
+        ),
         data: (profile) => _buildProfile(context, ref, profile, theme, isDark, isOwnProfile),
       ),
     );

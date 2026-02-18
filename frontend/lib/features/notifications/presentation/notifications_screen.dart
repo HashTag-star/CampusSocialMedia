@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:campus_social_media/features/notifications/data/notification_repository.dart';
 import 'package:campus_social_media/features/profile/data/profile_repository.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:campus_social_media/core/widgets/error_retry_widget.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
@@ -61,7 +62,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
+        error: (err, stack) => ErrorRetryWidget(
+          message: err.toString(),
+          onRetry: () => ref.refresh(notificationsProvider),
+        ),
       ),
     );
   }

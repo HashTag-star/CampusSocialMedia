@@ -39,7 +39,7 @@ exports.register = async (req, res) => {
             expiresIn: '30d'
         });
 
-        res.status(201).json({ token, user: { id: user.id, email: user.email, university_id: universityId } });
+        res.status(201).json({ token, user: { id: user.id, email: user.email, role: user.role, university_id: universityId } });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });
@@ -76,6 +76,7 @@ exports.register = async (req, res) => {
             user: { 
                 id: user.id, 
                 email: user.email,
+                role: user.role,
                 profile_data: user.profile_data || {}
             } 
         });
@@ -96,6 +97,7 @@ exports.getMe = async (req, res) => {
         res.json({
             id: user.id,
             email: user.email,
+            role: user.role,
             profile_data: user.profile_data || {}
         });
     } catch (error) {

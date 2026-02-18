@@ -2,24 +2,40 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:campus_social_media/core/network/api_client.dart';
 import 'package:campus_social_media/features/auth/domain/user.dart';
+import 'package:campus_social_media/core/services/cache_service.dart';
 
 final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
-  return ProfileRepository(ref.watch(apiClientProvider));
+  return ProfileRepository(ref.watch(apiClientProvider), ref.watch(cacheServiceProvider));
 });
 
 class ProfileRepository {
   final Dio _dio;
+  final CacheService _cacheService;
 
-  ProfileRepository(this._dio);
+  ProfileRepository(this._dio, this._cacheService);
 
   Future<Map<String, dynamic>> getUserProfile(String userId) async {
-    final response = await _dio.get('/users/$userId');
-    return response.data;
+    try {
+      final response = await _dio.get('/users/$userId');
+      await _cacheService.save('profile_$userId', response.data);
+      return response.data;
+    } catch (e) {
+      final cached = await _cacheService.get('profile_$userId');
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>> getMyProfile() async {
-    final response = await _dio.get('/users/me');
-    return response.data;
+    try {
+      final response = await _dio.get('/users/me');
+      await _cacheService.save('profile_me', response.data);
+      return response.data;
+    } catch (e) {
+      final cached = await _cacheService.get('profile_me');
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
   Future<void> followUser(String userId) async {
@@ -35,13 +51,29 @@ class ProfileRepository {
   }
 
   Future<List<dynamic>> getFollowers(String userId) async {
-    final response = await _dio.get('/users/$userId/followers');
-    return response.data as List;
+    try {
+      final response = await _dio.get('/users/$userId/followers');
+      final list = response.data as List;
+      await _cacheService.save('followers_$userId', list);
+      return list;
+    } catch (e) {
+      final cached = await _cacheService.get('followers_$userId');
+      if (cached != null) return cached as List;
+      rethrow;
+    }
   }
 
   Future<List<dynamic>> getFollowing(String userId) async {
-    final response = await _dio.get('/users/$userId/following');
-    return response.data as List;
+    try {
+      final response = await _dio.get('/users/$userId/following');
+      final list = response.data as List;
+      await _cacheService.save('following_$userId', list);
+      return list;
+    } catch (e) {
+      final cached = await _cacheService.get('following_$userId');
+      if (cached != null) return cached as List;
+      rethrow;
+    }
   }
 
   Future<void> updateProfile({

@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:campus_social_media/core/network/api_client.dart';
 import 'package:campus_social_media/features/auth/domain/user.dart';
+import 'package:campus_social_media/core/services/cache_service.dart';
 
 // Notification Model (Simplified for frontend)
 class AppNotification {
@@ -34,21 +35,27 @@ class AppNotification {
 }
 
 final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
-  return NotificationRepository(ref.watch(apiClientProvider));
+  return NotificationRepository(ref.watch(apiClientProvider), ref.watch(cacheServiceProvider));
 });
 
 class NotificationRepository {
   final Dio _dio;
+  final CacheService _cacheService;
 
-  NotificationRepository(this._dio);
+  NotificationRepository(this._dio, this._cacheService);
 
   Future<List<AppNotification>> getNotifications() async {
     try {
       final response = await _dio.get('/notifications');
       final list = response.data as List;
+      await _cacheService.save('notifications', list);
       return list.map((e) => AppNotification.fromJson(e)).toList();
     } catch (e) {
-      return [];
+      final cached = await _cacheService.get('notifications');
+      if (cached != null) {
+        return (cached as List).map((e) => AppNotification.fromJson(e)).toList();
+      }
+      return []; // Return empty if no cache
     }
   }
 

@@ -3,22 +3,31 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:campus_social_media/core/network/api_client.dart';
 import 'package:campus_social_media/features/feed/domain/post_entity.dart';
+import 'package:campus_social_media/core/services/cache_service.dart';
 
 final feedRepositoryProvider = Provider<FeedRepository>((ref) {
-  return FeedRepository(ref.watch(apiClientProvider));
+  return FeedRepository(ref.watch(apiClientProvider), ref.watch(cacheServiceProvider));
 });
 
 class FeedRepository {
   final Dio _dio;
+  final CacheService _cacheService;
 
-  FeedRepository(this._dio);
+  FeedRepository(this._dio, this._cacheService);
 
   Future<List<Post>> getCampusFeed() async {
     try {
       final response = await _dio.get('/posts/feed/campus');
       final list = response.data as List;
+      // Cache the response
+      await _cacheService.save('campus_feed', list);
       return list.map((e) => Post.fromJson(e)).toList();
     } catch (e) {
+      // Fallback to cache
+      final cachedList = await _cacheService.get('campus_feed');
+      if (cachedList != null) {
+        return (cachedList as List).map((e) => Post.fromJson(e)).toList();
+      }
       rethrow;
     }
   }
@@ -31,10 +40,27 @@ class FeedRepository {
          'limit': 20,
       });
       final list = response.data as List;
+      
+      // Only cache the first page (refresh)
+      if (cursor == null) {
+         await _cacheService.save('foryou_feed', list);
+      }
+      
       return list.map((e) => Post.fromJson(e)).toList();
     } catch (e) {
-      // Fallback to campus feed if error or empty (only on first load)
-      if (cursor == null) return getCampusFeed();
+      // Fallback to cache only if it's a refresh (first page)
+      if (cursor == null) {
+        final cachedList = await _cacheService.get('foryou_feed');
+        if (cachedList != null) {
+          return (cachedList as List).map((e) => Post.fromJson(e)).toList();
+        }
+        // If no cache, try campus feed cache as last resort? Maybe not.
+        try {
+           return await getCampusFeed(); // Fallback logic from before
+        } catch (_) {
+           rethrow; 
+        }
+      }
       return [];
     }
   }
