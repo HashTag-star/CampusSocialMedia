@@ -26,7 +26,6 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncLoading();
     try {
       final token = await _storage.read(key: 'auth_token');
-      print('DEBUG: checkAuth token: $token');
       
       if (token == null) {
         state = const AsyncData(null);
@@ -36,17 +35,14 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
       // Token exists, fetch user data
       try {
         final user = await _repository.getMe();
-        print('DEBUG: checkAuth user found: ${user.email}');
         _ref.read(currentUserProvider.notifier).state = user;
         state = const AsyncData(null);
       } catch (e) {
-        print('DEBUG: checkAuth getMe failed: $e');
         // Token invalid or network error
         await _storage.delete(key: 'auth_token');
         state = const AsyncData(null); // Return to login state
       }
     } catch (e, st) {
-      print('DEBUG: checkAuth critical error: $e');
       state = AsyncError(e, st);
     }
   }
@@ -55,12 +51,10 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncLoading();
     try {
       final response = await _repository.login(email, password);
-      print('DEBUG: Login successful, saving token: ${response.token}');
       await _storage.write(key: 'auth_token', value: response.token);
       
       // Verify write
-      final verify = await _storage.read(key: 'auth_token');
-      print('DEBUG: Token verification read: $verify');
+
 
       // Store current user in provider
       _ref.read(currentUserProvider.notifier).state = response.user;
@@ -70,7 +64,6 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
       
       state = const AsyncData(null);
     } catch (e, st) {
-      print('DEBUG: Login failed: $e');
       state = AsyncError(e, st);
     }
   }

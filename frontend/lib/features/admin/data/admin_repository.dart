@@ -1,8 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:campus_social_media/core/constants/api_constants.dart';
+import 'package:campus_social_media/core/network/api_client.dart';
 
-final adminRepositoryProvider = Provider((ref) => AdminRepository(Dio(BaseOptions(baseUrl: ApiConstants.baseUrl))));
+final adminRepositoryProvider = Provider((ref) => AdminRepository(ref.watch(apiClientProvider)));
 
 class AdminRepository {
   final Dio _dio;
